@@ -1,10 +1,11 @@
 # python-package-template
 
-This is a template repository for Python package projects.
+This is repository was generated using the following template: https://github.com/allenai/python-package-template/tree/main/my_package
+As the content of the repositiry evaloves the template placeholders will become out of date.
 
-## In this README :point_down:
+## Outline of this README :point_down:
 
-- [Features](#features)
+- [Template Features](#template-features)
 - [Usage](#usage)
   - [Initial setup](#initial-setup)
   - [Creating releases](#creating-releases)
@@ -12,7 +13,13 @@ This is a template repository for Python package projects.
 - [FAQ](#faq)
 - [Contributing](#contributing)
 
-## Features
+## Description
+Alltrials is a playground repo to explore the clinical trials data publicly available at
+https://classic.clinicaltrials.gov
+
+
+
+## Template Features
 
 This template repository comes with all of the boilerplate needed for:
 
