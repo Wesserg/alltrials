@@ -20,10 +20,18 @@ https://classic.clinicaltrials.gov
 - clinicaltrials.gov
 - https://aact.ctti-clinicaltrials.org/
 ### Articles
-- https://www.nature.com/articles/s41597-023-01960-3
+- Knowle3dge Graphs for precision Medicine
+    https://www.nature.com/articles/s41597-023-01960-3
+
+- Clinical Trial KNownedle Graph: CTGKG
+    https://www.nature.com/articles/s41598-022-08454-z
+
 ### Software
 - pytrials package for data access 
-
+- Autocreating clinical trails DB and dnld source
+    https://github.com/ctti-clinicaltrials/aact
+- CTKG repository
+    https://github.com/ninglab/CTKG
 ## Example analysis
 
 ## Template Features
