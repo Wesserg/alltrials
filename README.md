@@ -1,23 +1,30 @@
-# python-package-template
+# alltrials package
+Package name is a pun on AllTrails app used to finding and planning your way around various outdoor activities. Similarly Alltrials package is a module for planning your way around analyizing clinical trials.
+
+The package aims to explore the general set of clinical trials collected from clinicaltrials.gov
 
 This is repository was generated using the following template: https://github.com/allenai/python-package-template/tree/main/my_package
 As the content of the repositiry evaloves the template placeholders will become out of date.
 
 ## Outline of this README :point_down:
-
-- [Template Features](#template-features)
-- [Usage](#usage)
-  - [Initial setup](#initial-setup)
-  - [Creating releases](#creating-releases)
-- [Projects using this template](#projects-using-this-template)
-- [FAQ](#faq)
-- [Contributing](#contributing)
-
+- [Intro]
+- [Resources]
+- [Template Features]
+- [Examples]
+ 
 ## Description
 Alltrials is a playground repo to explore the clinical trials data publicly available at
 https://classic.clinicaltrials.gov
+## Resources used
+### Data
+- clinicaltrials.gov
+- https://aact.ctti-clinicaltrials.org/
+### Articles
+- https://www.nature.com/articles/s41597-023-01960-3
+### Software
+- pytrials package for data access 
 
-
+## Example analysis
 
 ## Template Features
 
@@ -35,9 +42,9 @@ This template repository comes with all of the boilerplate needed for:
 
 🚀 Automatic GitHub and PyPI releases. Just follow the steps in [`RELEASE_PROCESS.md`](./RELEASE_PROCESS.md) to trigger a new release.
 
-## Usage
+### Tempplate Usage
 
-### Initial setup
+#### Template Initial setup
 
 1. [Create a new repository](https://github.com/allenai/python-package-template/generate) from this template with the desired name of your project.
 
@@ -89,30 +96,18 @@ This template repository comes with all of the boilerplate needed for:
 
     *After your first release, the docs will automatically be published to [your-project-name.readthedocs.io](https://your-project-name.readthedocs.io/).*
 
-### Creating releases
+#### Template Creating releases
 
 Creating new GitHub and PyPI releases is easy. The GitHub Actions workflow that comes with this repository will handle all of that for you.
 All you need to do is follow the instructions in [RELEASE_PROCESS.md](./RELEASE_PROCESS.md).
 
-## Projects using this template
-
-Here is an incomplete list of some projects that started off with this template:
-
-- [ai2-tango](https://github.com/allenai/tango)
-- [cached-path](https://github.com/allenai/cached_path)
-- [beaker-py](https://github.com/allenai/beaker-py)
-- [gantry](https://github.com/allenai/beaker-gantry)
-- [ip-bot](https://github.com/abe-101/ip-bot)
-
-☝️ *Want your work featured here? Just open a pull request that adds the link.*
-
-## FAQ
+### Template FAQ
 
 #### Should I use this template even if I don't want to publish my package?
 
 Absolutely! If you don't want to publish your package, just delete the `docs/` directory and the `release` job in [`.github/workflows/main.yml`](https://github.com/allenai/python-package-template/blob/main/.github/workflows/main.yml).
 
-## Contributing
+### Template Contributing
 
 If you find a bug :bug:, please open a [bug report](https://github.com/allenai/python-package-template/issues/new?assignees=&labels=bug&template=bug_report.md&title=).
 If you have an idea for an improvement or new feature :rocket:, please open a [feature request](https://github.com/allenai/python-package-template/issues/new?assignees=&labels=Feature+request&template=feature_request.md&title=).
