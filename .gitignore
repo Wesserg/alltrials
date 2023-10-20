@@ -54,3 +54,9 @@ site/
 *.csv
 *.db
 data/
+scripts/=1.4
+saved_models/tutorial7/GraphLevelGraphConv.ckpt
+saved_models/tutorial7/NodeLevelGNN.ckpt
+saved_models/tutorial7/NodeLevelMLP.ckpt
+saved_models/tutorial7/NodeLevelGNN/lightning_logs/version_0/hparams.yaml
+saved_models/tutorial7/NodeLevelMLP/lightning_logs/version_0/hparams.yaml
