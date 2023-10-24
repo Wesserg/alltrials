@@ -183,3 +183,11 @@ new_document = TaggedDocument(words=new_text_preprocessed, tags=[new_tag])
 new_vector = model.infer_vector(new_document.words)
 
 # %%
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+i, j = 1,100
+emb_i = model.dv[i]
+emb_j = model.dv[j]
+cosine_sim = np.dot(emb_i, emb_j) / (np.linalg.norm(emb_i) * np.linalg.norm(emb_j))
+
+print(f"Cosine Similarity between trials {i} and {j}: {cosine_sim}")
