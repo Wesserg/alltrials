@@ -7,66 +7,22 @@ from datetime import datetime as dt
 import re
 from tqdm import tqdm
 import numpy as np
-reload_all_data = False
+import graph_tool.all as gt
+import sqlite3
+import psycopg2
+
+
+reload_all_data = True
+use_sqlite = True
+use_csv = False
+use_postgres = False
+table_name = "alltrials"
+data_dir = "../data/"
+n_samples = 10000
 # %% loading the large pandas dataset
 # wonder if we can read it in into memory:P - YES we can.
-if reload_all_data:
-    print(f"{dt.now()}: Reading in csv data...")
-    alltrials_df = pd.read_csv('../data/alltrials.csv', index_col=False, on_bad_lines='warn', sep="\t")
-    print(f"{dt.now()}: Done reading in csv data...")
-
-# %% 
-# ## Exploring the data
-if reload_all_data:
-
-    n,m = alltrials_df.shape
-
-    # get all columns in the dataframe
-    useful_columns = alltrials_df.columns
-    print(len(useful_columns))
-    # How many columns have what percentage of missing values?
-    percent_null_columns = alltrials_df.isnull().sum(axis=0)/n
-    # Remove columns from useful_columns with more than npercent_threshold missing values
-    npercent_threshold = 0.80
-    useful_columns = useful_columns[percent_null_columns < npercent_threshold]
-    print(len(useful_columns))
-
-    # remove columns with only 1 unique value except nan
-    unique_columns = alltrials_df[useful_columns].nunique()
-    unique_columns = unique_columns[unique_columns > 1]
-    useful_columns = unique_columns.index
-    print(len(useful_columns))
+print(f"{dt.now()}: Reading in data...")
 # %%
-# Restrict dataframe to useful columns
-if reload_all_data:
-
-    alltrials_df = alltrials_df[useful_columns]
-    print(alltrials_df.shape)
-
-# %%
-# Remove trials (rows of the dataframe) that have more than npercent_threshold missing values
-if reload_all_data:
-
-    npercent_threshold = 0.5
-    percent_null_rows = alltrials_df.isnull().sum(axis=1)/m
-    alltrials_df = alltrials_df.loc[(percent_null_rows < npercent_threshold),:]
-    alltrials_df.to_csv("../data/alltrials_clean.csv", index=False, sep="\t")
-
-# %%
-# %% Load the cleaned data
-alltrials_df = pd.read_csv('../data/alltrials_clean.csv', index_col=False, on_bad_lines='warn', sep="\t")
-alltrials_df.shape
-# %% [markdown]
-# 
-
-from sklearn.preprocessing import LabelEncoder
-
-# Sample clinical trial data (replace with your dataframe)
-alltrials_df = alltrials_df.sample(10000)
-data = alltrials_df
-data_types = data.dtypes
-
-
 def column_contains_text(data_column, min_text_len = 100, min_unique_values=20):
     # Iterate through the values in the column
     for value in data_column:
@@ -77,36 +33,125 @@ def column_contains_text(data_column, min_text_len = 100, min_unique_values=20):
 
 
 def column_is_numeric(data_column, min_unique_values=20):
-    try:
-        pd.to_numeric(data_column, errors='raise')
-        if data_column.nunique() > min_unique_values:  # Check if there are multiple unique values
-            return True
-        else:
+    if pd.api.types.is_numeric_dtype(data_column.dtype):
+        return True
+    else:
+        try:
+            pd.to_numeric(data_column, errors='raise')
+            if data_column.nunique() > min_unique_values:  # Check if there are multiple unique values
+                return True
+            else:
+                return False
+        except (ValueError, TypeError):
             return False
-    except (ValueError, TypeError):
-        return False
 
 
 def column_is_categorical(data_column, max_unique_values=100):
     return data_column.nunique() < max_unique_values  # Check if there are multiple unique values
 
 
+def load_data(data_dir: str, table_name: str, n_samples: int =0, load_source: str = "sqlite", drop_empty_columns_threshold = 0.8, drop_empty_rows_threshold = 0.2) -> pd.DataFrame:
+    if load_source=="sqlite":
+        db_file = f"{data_dir}{table_name}.db"  # Replace with the path to your SQLite database
+
+        # Connect to the SQLite database
+        conn = sqlite3.connect(db_file)
+
+        # Create a SQL query to sample 'n' rows from your table
+        if n_samples==0:
+            query = f"SELECT * FROM '{table_name}';"    
+        else:
+            query = f"SELECT * FROM '{table_name}' ORDER BY RANDOM() LIMIT {n_samples};"
+        col_query = f"PRAGMA table_info('{table_name}');"
+        columns_info = conn.execute(col_query).fetchall()
+        column_names = [col[1] for col in columns_info]
+        # Use Pandas to read the query result into a DataFrame
+        alltrials_df = pd.read_sql_query(query, conn)
+        alltrials_df.columns = column_names
+        # Close the database connection
+        conn.close()
+        
+    elif use_csv:
+        alltrials_df = pd.read_csv(f"{data_dir}{table_name}.csv", index_col=False, on_bad_lines='warn', sep="\t")
+        if n_samples > 0:
+            alltrials_df = alltrials_df.sample(n_samples)
+    elif use_postgres:
+        
+        # Set your connection parameters
+        db_params = {
+            'dbname': 'aact',
+            'user': 'postgres',
+            'password': 'postgres',
+            'host': 'localhost',
+            'port': 5432  # Default PostgreSQL port
+        }
+
+        # Connect to the database
+        conn = psycopg2.connect(**db_params)
+        cursor = conn.cursor()
+        print("Connected to the database!")
+        
+        if n_samples==0:
+            query = f"SELECT * FROM '{table_name}';"    
+        else:
+            query = f"SELECT * FROM '{table_name}' ORDER BY RANDOM() LIMIT {n_samples};"
+
+        # You can now execute SQL queries
+        cursor.execute("SELECT * FROM ctgov.conditions LIMIT 10") # What other tables are there? See cell below.
+        result = cursor.fetchall()
+        print(result)
+    
+        # Define the column names
+        column_names = [desc[0] for desc in cursor.description]
+
+        # Create a Pandas DataFrame
+        df = pd.DataFrame(result, columns=column_names)
+        print(df)
+
+
+        # Don't forget to close the cursor and connection when done
+        cursor.close()
+        conn.close()
+    # Remove columns with more than 80% missing values
+    alltrials_df = alltrials_df.dropna(axis=1, thresh=int(drop_empty_columns_threshold* len(alltrials_df)), inplace=False)
+    # Remove rows with more than 20% missing values
+    alltrials_df = alltrials_df.dropna(axis=0, thresh=int(drop_empty_rows_threshold* len(alltrials_df.columns)), inplace=False)
+    return alltrials_df
+
+# %% 
+# Testing the loading of the data
+table_name = "alltrials"
+data_dir = "../data/"
+n_samples = 10000
+load_source = "sqlite"
+print(f"{dt.now()}: Reading in data from '{table_name} table in '{data_dir}' from {load_source}...")
+
+alltrials_df = load_data(data_dir, table_name, n_samples, load_source=load_source)
+print(f"{dt.now()}: Done reading in data...")
+
+print(alltrials_df)
+# %%
+# Sample clinical trial data (replace with your dataframe)
+
+data_types = alltrials_df.dtypes
+
+# %%
+# Group columns based on data types
+# - categorical variables
+# - text variables
+# - numerical variables
+# - gibberish variables (e.g. columns with only one value) or too many unique non-numeric values
 text_columns = []
 categorical_columns = []
 numerical_columns = []
 gibberish_columns = []
-
-# %%
-# Categorize columns based on data types
-# iterate throuhg columns and data types
-
 for column, data_type in tqdm(data_types.items()):
-    if column_contains_text(data[column]):  # Detect text columns
-        text_columns.append(column)
-    elif column_is_numeric(data[column]):  # Detect numerical columns
-        numerical_columns.append(column)
-    elif column_is_categorical(data[column]):  # Detect categorical columns
+    if column_is_categorical(alltrials_df[column]):  # Detect categorical columns
         categorical_columns.append(column)
+    elif column_is_numeric(alltrials_df[column]):  # Detect numerical columns
+        numerical_columns.append(column)
+    elif column_contains_text(alltrials_df[column]):  # Detect text columns
+        text_columns.append(column)
     else:
         gibberish_columns.append(column)
 
@@ -114,56 +159,25 @@ print("Text Columns:", text_columns)
 print("Categorical Columns:", categorical_columns)
 print("Numerical Columns:", numerical_columns)
 print("Gibberish Columns:", gibberish_columns)
-# Extract numerical features and handle missing values
-# For this example, we will keep 'TrialID' as a numerical feature
-# %% [optional]
-# Using TF-IDF to convert text columns into numerical features 
-tfidf_vectorizer = TfidfVectorizer()
-text_embeddings = tfidf_vectorizer.fit_transform(data[text_columns])
-
-# Convert categorical variables into numerical representations
-categorical_features = ['Condition']
-label_encoders = {}
-for feature in categorical_columns:
-    le = LabelEncoder()
-    data[feature] = le.fit_transform(data[feature])
-    label_encoders[feature] = le
-
-# Combine all numerical features
-numerical_data = data[numerical_columns + categorical_columns]
-
-# Combine the numerical data with text embeddings
-combined_data = pd.concat([numerical_data, pd.DataFrame(text_embeddings.toarray())], axis=1)
-
-# Print the resulting dataframe
-print(combined_data)
-
 
 # %% [Averaging word vectors for a sentence/paragraph]
 # Using Word2Vec to convert text columns into embeddings
 # This is not the most efficient as it is not generalizable to words that have not been seen before
-from gensim.models import Word2Vec, fasttext, Doc2Vec #FB alternative to word2vec
-data[text_columns] = data[text_columns].fillna(' ')  # Replace missing values with empty strings
-data['ConcatenatedText'] = data[text_columns].apply(lambda row: '. '.join(row), axis=1)
+from gensim.models import Doc2Vec # Word2Vec, fasttext, 
+from gensim.models.doc2vec import TaggedDocument
+
+alltrials_df[text_columns] = alltrials_df[text_columns].fillna(' ')  # Replace missing values with empty strings
+alltrials_df['Notes'] = alltrials_df[text_columns].apply(lambda row: '. '.join(row), axis=1)
 symbols_to_remove = r'[\[\]{}]'  # This regex pattern removes square brackets and curly braces
 # Remove symbols indicating lists or sets
-data['ConcatenatedText'] = data['ConcatenatedText'].apply(lambda text: re.sub(symbols_to_remove, '', text))
-# %%
-text_data = data['ConcatenatedText']
-model = Word2Vec(sentences=text_data, vector_size=100, window=5, min_count=1, sg=0)
-vector = model.wv['a']
-# Example: Averaging word vectors for a sentence
-# %%
-sentence = ['This', 'is', 'a', 'sentence']
-sentence_vector = np.mean([model.wv[word] for word in sentence], axis=0)
+alltrials_df['Notes'] = alltrials_df['Notes'].apply(lambda text: re.sub(symbols_to_remove, '', text.lower()))
+text_data = alltrials_df['Notes']
 
 
 # %% [Using Doc2Vec to convert text into embeddings]
-from gensim.models import Doc2Vec
-from gensim.models.doc2vec import TaggedDocument
 
 # Assuming 'data' is your DataFrame with the 'ConcatenatedText' column
-documents = [TaggedDocument(words=text.split(), tags=[str(i)]) for i, text in enumerate(data['ConcatenatedText'])]
+documents = [TaggedDocument(words=text.split(), tags=[str(i)]) for i, text in enumerate(alltrials_df['Notes'])]
 
 # Train a Doc2Vec model
 model = Doc2Vec(documents, vector_size=100, window=5, min_count=1, workers=4, epochs=20)
@@ -191,3 +205,33 @@ emb_j = model.dv[j]
 cosine_sim = np.dot(emb_i, emb_j) / (np.linalg.norm(emb_i) * np.linalg.norm(emb_j))
 
 print(f"Cosine Similarity between trials {i} and {j}: {cosine_sim}")
+
+# %%
+
+
+# Cosine similarity threshold for adding edges
+cosine_threshold = 0.7
+
+# Create a graph
+g = gt.Graph(directed=False)
+
+# Add a property map to store clinical trial IDs as node properties
+node_ids = g.new_vertex_property("int")
+
+# Loop through clinical trials
+for i, trial1 in enumerate(model.dv):
+    v1 = g.add_vertex()  # Add a node for clinical trial 1
+    node_ids[v1] = trial1["trial_id"]  # Set the node property to store trial ID
+
+    for j, trial2 in enumerate(model.dv[i+1:]):
+        if trial1["trial_id"] != trial2["trial_id"]:
+            # Calculate cosine similarity between trial1 and trial2
+            embedding1 = trial1["embedding"]
+            embedding2 = trial2["embedding"]
+            cosine_similarity = np.dot(embedding1, embedding2) / (np.linalg.norm(embedding1) * np.linalg.norm(embedding2))
+
+            if cosine_similarity < cosine_threshold:
+                # Add an edge between trial1 and trial2
+                v2 = g.vertex(g.vertex_index[v1])  # Get vertex for trial1
+                v3 = g.vertex(trial2["trial_id"])  # Get vertex for trial2
+                g.add_edge(v2, v3)
