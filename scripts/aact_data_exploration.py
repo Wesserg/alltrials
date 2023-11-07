@@ -43,7 +43,7 @@ cursor.execute("""
 """)
 
 tables = cursor.fetchall()
-print(tables)
+print([table_name[0] for table_name in tables])
 # %%
 # Analyze missing data for each column in a table
 all_tables_dict = dict()
@@ -64,7 +64,7 @@ for table_name in tqdm(tables):
         continue
     if "id" in df.columns:
         df.drop('id', axis=1, inplace=True)
-    df.rename({"name" : table_name[0], "names": table_name[0]}, axis=1, inplace=True)
+    df.rename({"name": table_name[0], "names": table_name[0]}, axis=1, inplace=True)
     text_columns = []
     categorical_columns = []
     numerical_columns = []
@@ -89,6 +89,7 @@ for table_name in tqdm(tables):
 
 # %%
 all_tables_df = pd.concat([add_df for add_df in df_list if len(add_df)>0], axis=1)
+all_tables_df.dropna(axis=0, thresh=int(all_tables_df.shape[1]/5), inplace=True)
 
 
 # %%
