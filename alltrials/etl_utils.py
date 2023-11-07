@@ -25,6 +25,22 @@ def column_contains_text(data_column: pd.Series, min_text_len: int = 100, min_un
     return False  # No text detected in any value
 
 
+def column_is_empty(data_column: pd.Series, max_frac_empty: float = 0.8) -> bool:
+    """
+    Check if a DataFrame column is mostly empty.
+
+    Args:
+        data_column (pd.Series): The pandas Series representing the column.
+        max_frac_empty (float, optional): Maximum fraction of empty values to consider as empty. Defaults to 0.8.
+
+    Returns:
+        bool: True if the column is empty, otherwise False.
+    """
+    if data_column.isnull().sum() / len(data_column) > max_frac_empty:
+        return True
+    else:
+        return False
+
 def column_is_numeric(data_column: pd.Series, min_unique_values: int = 20) -> bool:
     """
     Check if a DataFrame column is numeric.
@@ -49,7 +65,7 @@ def column_is_numeric(data_column: pd.Series, min_unique_values: int = 20) -> bo
             return False
 
 
-def column_is_categorical(data_column: pd.Series, max_unique_values: int = 100) -> bool:
+def column_is_categorical(data_column: pd.Series, max_unique_values: int = 100, min_unique_values: int = 1) -> bool:
     """
     Check if a DataFrame column is categorical.
 
@@ -60,7 +76,8 @@ def column_is_categorical(data_column: pd.Series, max_unique_values: int = 100) 
     Returns:
         bool: True if the column is categorical, otherwise False.
     """
-    return data_column.nunique() < max_unique_values
+    nunique_values = data_column.nunique()
+    return nunique_values < max_unique_values and nunique_values > min_unique_values
 
 
 def load_data(data_dir: str, table_name: str, n_samples: int = 0, load_source: str = "sqlite",

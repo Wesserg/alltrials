@@ -6,32 +6,32 @@ setup(
     packages=find_packages(),
     install_requires=[
         # Data Science
-        numpy
-        scikit-learn
+        "numpy",
+        "scikit-learn",
 
         # Utils
-        tqdm
-        datetime
-        ipykernel
+        "tqdm",
+        "datetime",
+        "ipykernel",
 
         # AI/ML
-        torch
-        torch_geometric
-        torchvision
-        pytorch-lightning
-        gensim
-        pomegranate
+        "torch",
+        "torch_geometric",
+        "torchvision",
+        "pytorch-lightning",
+        "gensim",
+        "pomegranate",
 
         # Data Loading
-        pandas
-        duckDB
-        pysqlite3
-        sqlalchemy
-        psycopg2-binary
+        "pandas",
+        "duckDB",
+        "pysqlite3",
+        "sqlalchemy",
+        "psycopg2-binary",
 
         # Graphics
-        seaborn
-        plotly
-        matplotlib
+        "seaborn",
+        "plotly",
+        "matplotlib",
     ],
 )
