@@ -23,6 +23,23 @@ gnn_layer_by_name = {
 }
 CHECKPOINT_PATH = "../saved_models"
 
+from torch_geometric.data import InMemoryDataset, Data
+
+class SingleObjectDataset(InMemoryDataset):
+    def __init__(self, data):
+        super(SingleObjectDataset, self).__init__()
+        self.data = data
+
+        # Process the single data object
+        self.data_list = [data]
+
+    def __len__(self):
+        return 1  # Only one object in the dataset
+
+    def get(self, idx):
+        return self.data_list[idx]
+
+# Create a dataset with a single object
 
 # Example graph data
 # %%
@@ -34,9 +51,9 @@ def gt_to_pytorch_geometric(g, alltrials_categorical_df):
     for col in alltrials_categorical_df.columns:
         alltrials_categorical_df[col] = pd.factorize(alltrials_categorical_df[col])[0]
     # %%
-    x = torch.from_numpy(np.array(alltrials_categorical_df, dtype=float))  # Node features (random for illustration)
-
-    y = torch.tensor(alltrials_categorical_df.phase, dtype=torch.float64)  # Target labels (for supervised learning)
+    x = torch.from_numpy(np.array(alltrials_categorical_df.drop("phase", axis=1), dtype = np.float32))  # Node features (random for illustration)
+    
+    y = torch.tensor(alltrials_categorical_df.phase)  # Target labels (for supervised learning)
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.5)
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.5)
@@ -62,7 +79,8 @@ def gt_to_pytorch_geometric(g, alltrials_categorical_df):
     aact_graph_data.val_mask = val_mask
     aact_graph_data.test_mask = test_mask
     aact_graph_data.edge_attr = torch.tensor(g.ep['e_weights'].a)  # Edge features (random for illustration)
-    return aact_graph_data
+    aact_graph_dataset = SingleObjectDataset(aact_graph_data)
+    return aact_graph_dataset
 
 
 # %%
