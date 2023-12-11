@@ -58,7 +58,98 @@ def get_aact_connection(db_params: Dict[str, Union[str, int]] = DB_PARAMS) -> co
         print("Error:", error)
 
 
-def get_aact_studies_data(aact_table: str = 'studies', aact_schema: str = 'ctgov', n_rows_limit: int = 1000) -> pd.DataFrame:
+def get_aact_selected_data(aact_tables: List = ['studies'], aact_schema: str = 'ctgov', n_rows_limit: int = 1000) -> pd.DataFrame:
+    """
+    Retrieves data from the AACT database for a specified table and schema.
+
+    Args:
+    - aact_tables (list): The list of table names in the AACT database.
+    - aact_schema (str): The schema name in the AACT database.
+    - n_rows_limit (int): Maximum number of rows to fetch.
+
+    Returns:
+    - pd.DataFrame: DataFrame containing the queried data.
+    """
+    print("getting studies baseline data...")
+    df = get_aact_ct_data(n_rows_limit=n_rows_limit)[0]
+    nct_ids = list(df.nct_id.unique())
+    nct_ids_str = ','.join(map(lambda x: f"'{x}'", nct_ids))
+    df.set_index('nct_id', inplace=True)
+    
+    df_list = list()
+    df_list.append(df)
+    conn = get_aact_connection()
+    cursor = conn.cursor()
+    # Generate the SELECT statement for joining tables dynamically
+    for table_name in tqdm(aact_tables):
+        print(f"Fetching data from {table_name}...")
+        aact_table_query = f"""
+        SELECT * FROM {aact_schema}.{table_name} WHERE nct_id IN ({nct_ids_str});
+        """
+        cursor = conn.cursor()
+        cursor.execute(aact_table_query)
+        result = cursor.fetchall()
+        column_names = [desc[0] for desc in cursor.description]
+
+        # Convert the result to a DataFrame with column names
+        df = pd.DataFrame(result, columns=column_names)
+        df.drop("id", axis=1, inplace=True)
+        if len(df) > 0 and "nct_id" in df.columns and df["nct_id"].nunique() == len(df):
+            df.set_index('nct_id', inplace=True)
+        elif len(df) > 0 and "nct_id" in df.columns and df["nct_id"].nunique() != len(df):
+        
+            grouped_cols = df.columns.to_series().groupby(df.dtypes.astype(str)).groups
+
+            # Separate columns based on data types
+            numeric_cols = [col for col in grouped_cols.get('float64', []) + grouped_cols.get('int64', [])]
+            text_cols = [col for col in grouped_cols.get('object', []) if col != 'nct_id']
+
+            # Aggregate numeric columns by taking the mean
+            df_numeric_aggregated = df.groupby('nct_id')[numeric_cols].mean().reset_index()
+
+            # Aggregate text columns by concatenating text values separated by comma
+            df_text_aggregated = df.groupby('nct_id')[text_cols].agg(lambda x: ', '.join(x)).reset_index()
+
+            # Merge the aggregated dataframes on 'nct_id'
+            df = pd.merge(df_numeric_aggregated, df_text_aggregated, on='nct_id', how='outer')
+            df.set_index('nct_id', inplace=True)
+            print(df)
+
+        else:
+            print(table_name, "is empty!")
+            continue
+        if "id" in df.columns:
+            df.drop('id', axis=1, inplace=True)
+        df.rename({"name": table_name, "names": table_name}, axis=1, inplace=True)
+        #df.drop(mostly_empty_columns+gibberish_columns, axis=1, inplace=True)
+        #df_list.append(df[categorical_columns + numerical_columns + text_columns])    
+        df_list.append(df)    
+    df = pd.concat(df_list, axis=1)
+    text_columns = []
+    categorical_columns = []
+    numerical_columns = []
+    gibberish_columns = []
+    mostly_empty_columns = []
+    for column in tqdm(df.columns):
+        if column_is_empty(df[column]):
+            mostly_empty_columns.append(column)
+        elif column_is_categorical(df[column]):  # Detect categorical columns
+            categorical_columns.append(column)
+        elif column_is_numeric(df[column]):  # Detect numerical columns
+            numerical_columns.append(column)
+        elif column_contains_text(df[column]):  # Detect text columns
+            text_columns.append(column)
+        else:
+            gibberish_columns.append(column)
+    
+    columns_dict = {'text_columns': text_columns, 'categorical_columns': categorical_columns,
+                    'numerical_columns': numerical_columns, 'gibberish_columns': gibberish_columns,
+                    'mostly_empty_columns': mostly_empty_columns}
+    conn.close()    
+    return df, columns_dict
+
+
+def get_aact_ct_data(aact_table: str = 'studies', aact_schema: str = 'ctgov', n_rows_limit: int = 1000) -> pd.DataFrame:
     """
     Retrieves data from the AACT database for a specified table and schema.
 
@@ -74,6 +165,7 @@ def get_aact_studies_data(aact_table: str = 'studies', aact_schema: str = 'ctgov
     cursor = conn.cursor()
     aact_query = f"""
     SELECT * FROM {aact_schema}.{aact_table}
+    ORDER BY RANDOM()
     LIMIT {n_rows_limit};
     """
 
@@ -187,7 +279,7 @@ def get_aact_all_data(aact_schema: str = 'ctgov', n_rows_limit: int = 1000) -> p
     return df, columns_dict
 
 
-def column_is_empty(data_column: pd.Series, min_empty_percent=75) -> bool:
+def column_is_empty(data_column: pd.Series, min_empty_percent=90) -> bool:
     """
     Check if a DataFrame column is empty in min_empty_percent or more entries.
 
