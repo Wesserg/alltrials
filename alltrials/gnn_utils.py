@@ -13,6 +13,9 @@ import numpy as np
 import graph_tool.all as gt
 from tqdm import tqdm
 
+CHECKPOINT_PATH = "../saved_models/"
+
+
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 print(device)
 
@@ -21,7 +24,6 @@ gnn_layer_by_name = {
     "GAT": geom_nn.GATConv,
     "GraphConv": geom_nn.GraphConv
 }
-CHECKPOINT_PATH = "../saved_models"
 
 from torch_geometric.data import InMemoryDataset, Data
 
@@ -43,7 +45,8 @@ class SingleObjectDataset(InMemoryDataset):
 
 # Example graph data
 # %%
-def gt_to_pytorch_geometric(g, alltrials_categorical_df):
+def gt_to_pytorch_geometric(g, alltrials_categorical_df, target_variable="phase"):
+    # plausible target variables: "phase", "overall_status"
     # Assuming you have a dataset with node features (x) and target labels (y)
     # Split the dataset into train, validation, and test sets
     alltrials_categorical_df.fillna("NA", inplace=True)
@@ -51,9 +54,9 @@ def gt_to_pytorch_geometric(g, alltrials_categorical_df):
     for col in alltrials_categorical_df.columns:
         alltrials_categorical_df[col] = pd.factorize(alltrials_categorical_df[col])[0]
     # %%
-    x = torch.from_numpy(np.array(alltrials_categorical_df.drop("phase", axis=1), dtype = np.float32))  # Node features (random for illustration)
+    x = torch.from_numpy(np.array(alltrials_categorical_df.drop(target_variable, axis=1), dtype = np.float32))  # Node features (random for illustration)
     
-    y = torch.tensor(alltrials_categorical_df.phase)  # Target labels (for supervised learning)
+    y = torch.tensor(alltrials_categorical_df[target_variable])  # Target labels (for supervised learning)
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.5)
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.5)
@@ -222,7 +225,7 @@ def train_node_classifier(model_name, dataset, **model_kwargs):
     root_dir = os.path.join(CHECKPOINT_PATH, "NodeLevel" + model_name)
     os.makedirs(root_dir, exist_ok=True)
     trainer = pl.Trainer(default_root_dir=root_dir,
-                         callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc")],
+                        callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc"), LearningRateMonitor(logging_interval="epoch")],
                          accelerator="gpu" if str(device).startswith("cuda") else "cpu",
                          devices=1,
                          max_epochs=200,

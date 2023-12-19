@@ -48,3 +48,15 @@ def add_node_properties(g, alltrials_categorical_df):
         g.vertex_properties["v_"+col] = categorical_prop
     return g
 
+
+def add_node_text_properties(g, alltrials_text_df):
+    used_nct_ids = [alltrials_text_df.index[i] for i in g.vertex_index]
+    alltrials_text_df = alltrials_text_df.loc[used_nct_ids,:]
+    # %%
+    for col in tqdm(alltrials_text_df.columns):
+        text_prop = g.new_vertex_property('string')  # Change 'string' to the appropriate data type
+        for v in g.vertices():
+            text_prop[v] = alltrials_text_df.loc[list(alltrials_text_df.index)[g.vertex_index[v]],col]
+            
+        g.vertex_properties["v_"+col] = text_prop
+    return g

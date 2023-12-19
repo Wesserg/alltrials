@@ -123,6 +123,7 @@ def get_aact_selected_data(aact_tables: List = ['studies'], aact_schema: str = '
         df.rename({"name": table_name, "names": table_name}, axis=1, inplace=True)
         #df.drop(mostly_empty_columns+gibberish_columns, axis=1, inplace=True)
         #df_list.append(df[categorical_columns + numerical_columns + text_columns])    
+        df.columns = [table_name + "_" + col for col in df.columns]
         df_list.append(df)    
     df = pd.concat(df_list, axis=1)
     text_columns = []
@@ -223,7 +224,7 @@ def get_aact_all_data(aact_schema: str = 'ctgov', n_rows_limit: int = 1000) -> p
         cursor = conn.cursor()
         cursor.execute(aact_table_query)
         result = cursor.fetchall()
-        column_names = [desc[0] for desc in cursor.description]
+        column_names = [table_name[0] + "_" + desc[0] for desc in cursor.description]
 
         # Convert the result to a DataFrame with column names
         df = pd.DataFrame(result, columns=column_names)
